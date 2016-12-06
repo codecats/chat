@@ -1,0 +1,9 @@
+version: '2'
+services:
+    web:
+        command: venv/bin/python main.py
+        working_dir: /code
+        ports:
+            - "5000:5000"
+        build:
+            context: .
