@@ -17,4 +17,5 @@ RUN pip install virtualenv
 
 RUN bash -c "virtualenv venv && . venv/bin/activate && pip install -r src/requirements/main.txt"
 
+EXPOSE 5001
 CMD ['venv/bin/python', '-u', 'src/main.py', "1>server.log", "2>server.log"]

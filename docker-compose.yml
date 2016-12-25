@@ -5,6 +5,7 @@ services:
         working_dir: /code/src
         ports:
             - "5000:5000"
+            - "5001:5001"
         build:
             context: .
         volumes:
