@@ -7,6 +7,7 @@ import pagan
 import cStringIO
 import base64
 import names
+from itertools import ifilter
 
 logging.basicConfig(filename='logs/main.log',level=logging.DEBUG)
 
@@ -31,10 +32,15 @@ class SocketHandler(websocket.WebSocketHandler):
         if not user_id:
             user_id = id(self)
         self.user = {'id': user_id, 'name': names.get_full_name(), 'avatar': get_image(unicode(user_id))}
+        client = next(ifilter(lambda x: x.user['id']==user_id, clients), None) 
+        if client is not None: 
+            self.user = client.user
+        else: 
+            self.user = {'id': user_id, 'name': names.get_full_name(), 'avatar': get_image(unicode(user_id))} 
         clients.append(self)
 
         for c in clients:
-            if c==self:
+            if c==self or client:
                 c.write_message(json.dumps({'users': map(lambda x: x.user, clients), 'myself': user_id}))
             else:
                 c.write_message(json.dumps({'user': self.user, 'cookie': COOKIE_USER_NAME}))
@@ -46,6 +52,7 @@ class SocketHandler(websocket.WebSocketHandler):
             clients.remove(self)
         for c in clients:
             c.write_message(json.dumps({'user_remove': {'id': user_id}}))  
+        #self.write_message(json.dumps({'user_remove': {'id': user_id}}))  
         print 'close', len(clients), user_id
 
     def on_message(self, message):
