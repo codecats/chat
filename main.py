@@ -9,6 +9,7 @@ import base64
 import names
 import uuid
 from itertools import ifilter
+from collections import deque
 from tornado.log import enable_pretty_logging
 
 enable_pretty_logging()
@@ -16,6 +17,7 @@ logging.basicConfig(filename='logs/main.log',level=logging.DEBUG)
 
 
 clients = []
+messages = deque(maxlen=20)
 COOKIE_USER_NAME = 'socket'
 
 def get_user_id(clients, cookie_user):
@@ -63,6 +65,9 @@ class SocketHandler(websocket.WebSocketHandler):
                 c.write_message(json.dumps({'users': map(lambda x: x.user, clients), 'myself': user_id}))
             else:
                 c.write_message(json.dumps({'user': self.user, 'cookie': COOKIE_USER_NAME}))
+        for c in clients:
+            for m in messages:
+                c.write_message(json.dumps({'msg': m['msg'], 'sender': m['sender']}))
         print 'open', len(clients)
 
     def on_close(self):
@@ -75,6 +80,7 @@ class SocketHandler(websocket.WebSocketHandler):
 
     def on_message(self, message):
         if message:
+            messages.append({'msg': message, 'sender': self.user})
             for c in clients:
                 if c != self:
                     c.write_message(json.dumps({'msg': message, 'sender': self.user}))
