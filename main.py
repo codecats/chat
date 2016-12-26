@@ -65,9 +65,8 @@ class SocketHandler(websocket.WebSocketHandler):
                 c.write_message(json.dumps({'users': map(lambda x: x.user, clients), 'myself': user_id}))
             else:
                 c.write_message(json.dumps({'user': self.user, 'cookie': COOKIE_USER_NAME}))
-        for c in clients:
-            for m in messages:
-                c.write_message(json.dumps({'msg': m['msg'], 'sender': m['sender']}))
+        for m in messages:
+            self.write_message(json.dumps({'msg': m['msg'], 'sender': m['sender']}))
         print 'open', len(clients)
 
     def on_close(self):
