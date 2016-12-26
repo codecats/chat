@@ -7,18 +7,39 @@ import pagan
 import cStringIO
 import base64
 import names
+import uuid
 from itertools import ifilter
+from tornado.log import enable_pretty_logging
 
+enable_pretty_logging()
 logging.basicConfig(filename='logs/main.log',level=logging.DEBUG)
 
 
 clients = []
 COOKIE_USER_NAME = 'socket'
 
+def get_user_id(clients, cookie_user):
+    user_id = cookie_user
+    if user_id is not None:
+        if not check_auth(user_id):
+            user_id = None
+    return user_id or generate_token(clients)
+
+def check_auth(token_id):
+    #var set for example in bash or heroku app
+    print os.environ.get("admin", '')
+    return os.environ.get("admin", '') == token_id
+
+def generate_token(clients):
+    while True:
+        token_id = uuid.uuid4().hex
+        if next(ifilter(lambda x: x.user['id']==token_id, clients), False) == False:
+            return token_id
+
 def get_image(name=''):
-    img = pagan.Avatar(name, pagan.SHA512)
+    img = pagan.Avatar(name, pagan.SHA224)
     buffer = cStringIO.StringIO()
-    img.img.save(buffer, format='JPEG')
+    img.img.save(buffer, format='PNG')
     return base64.b64encode(buffer.getvalue())
 
 class SocketHandler(websocket.WebSocketHandler):
@@ -28,9 +49,7 @@ class SocketHandler(websocket.WebSocketHandler):
         return True
 
     def open(self):
-        user_id = self.get_cookie(COOKIE_USER_NAME)
-        if not user_id:
-            user_id = id(self)
+        user_id = get_user_id(clients, self.get_cookie(COOKIE_USER_NAME, None))
         self.user = {'id': user_id, 'name': names.get_full_name(), 'avatar': get_image(unicode(user_id))}
         client = next(ifilter(lambda x: x.user['id']==user_id, clients), None) 
         if client is not None: 
@@ -47,12 +66,11 @@ class SocketHandler(websocket.WebSocketHandler):
         print 'open', len(clients)
 
     def on_close(self):
-        user_id = self.get_cookie(COOKIE_USER_NAME, id(self))
+        user_id = self.user['id']
         if self in clients:
             clients.remove(self)
         for c in clients:
-            c.write_message(json.dumps({'user_remove': {'id': user_id}}))  
-        #self.write_message(json.dumps({'user_remove': {'id': user_id}}))  
+            c.write_message(json.dumps({'user_remove': {'id': user_id}}))
         print 'close', len(clients), user_id
 
     def on_message(self, message):
